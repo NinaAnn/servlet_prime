@@ -3,6 +3,8 @@ package test.servlet;
 import java.io.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Properties;
+
 import javax.servlet.*;
 import javax.servlet.http.*;
 
@@ -71,7 +73,48 @@ public class HelloServlet extends HttpServlet {
 			response.sendRedirect("https://ninaann.github.io/");
 		}
 		**/
-	}
+		int numPrimes = utils.getIntParameter(request, "numPrimes", 50);
+		int numDigits = utils.getIntParameter(request, "numDigits", 20);
+		String title = numPrimes + " Primes with " + numDigits +" Digits."; 
+		
+		PrimeList primelist = findPrimeList(numPrimes, numDigits);
+		
+		if(primelist == null) {
+			primelist = new PrimeList(numPrimes, numDigits);
+			synchronized(primeListCollection){
+				if(primeListCollection.size()>=maxLists) {
+					primeListCollection.remove(0);
+				}
+				primeListCollection.add(primelist);
+			}
+		}
+		
+		ArrayList<BigInteger> currentlist = primelist.getPrimes();
+		int currentPrimeNumber = currentlist.size();
+		int primeRemain = numPrimes - currentPrimeNumber;
+		boolean isLastResult = primelist.isDone();
+		if(!isLastResult) {
+			response.setIntHeader("Refresh", 1);
+		}
+		
+		PrintWriter out = response.getWriter();
+		out.println("<html>"+
+					"<body bgcolor=\"#FDF5E6\">\n"+
+					"<h2 align=center>" + title + "</h2>\n"
+		);
+		if(!isLastResult) {
+			out.println("<B> Still looking for </B>" + primeRemain + "...\n");
+		}
+		else{
+			out.println("<B> Done Searching </B>");
+		}
+		out.println("<OL>");
+		for(int i=0;i<currentPrimeNumber;i++) {
+			out.println("<LI>" + currentlist.get(i));
+		}
+		out.println("</OL>");
+        out.println("</body></html>");
+        }
 
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
@@ -83,5 +126,15 @@ public class HelloServlet extends HttpServlet {
 		doGet(request, response);
 	}
 
-
+	private PrimeList findPrimeList(int numPrimes, int numDigits) {
+		synchronized(primeListCollection) {
+			for(int i=0; i<primeListCollection.size(); i++) {
+				PrimeList primes = (PrimeList) primeListCollection.get(i);
+				if(primes.numPrimes == numPrimes && primes.numDigits == numDigits) {
+					return(primes);
+				}
+			}
+			return(null);
+		}
+	}
 }
